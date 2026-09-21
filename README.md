@@ -1,116 +1,72 @@
 # بصيرة | Baseera Analytics
 
-**Osaid Alhawamdeh — AI Engineer & Trainer**
+> من ملف مربك إلى قرار مفهوم.
 
-## تحديث التنقّل وGroq — 18 سبتمبر 2026
+**Baseera** is an Arabic-first analytics workspace that helps people explore their Excel and CSV files, clean them deliberately, check the calculations, and turn the result into a decision they can explain.
 
-روابط المراحل تستخدم انتقالًا كاملًا داخل التبويب نفسه بدل انتقال RSC الداخلي الذي تعطل على الاستضافة. قبل المغادرة ينتظر التطبيق اكتمال حفظ المشروع وإصدار الحفظ السحابي وسجل التراجع/الإعادة في IndexedDB. عند فشل الحفظ يبقى المستخدم في الصفحة وتظهر رسالة؛ لا يُفقد التقدم بصمت. فتح تبويب جديد باختيار المستخدم يبقى سلوك المتصفح المعتاد.
+[Explore Baseera](https://baseera-analytics.osaidziad84.chatgpt.site) · Built by **Osaid Alhawamdeh — AI Engineer & Trainer**
 
-الإعداد المقترح للتجربة: `AI_PROVIDER=groq` و`AI_MODEL=openai/gpt-oss-20b`. أضف `GROQ_API_KEY` كسرّ خادم في إعدادات استضافة الموقع، ثم أعد النشر. محليًا انسخ `.env.example` إلى `.env` وأدخل المفتاح هناك؛ ملف الأسرار مستثنى من Git. راجع [موديلات Groq](https://console.groq.com/docs/models) عند تغيير الموديل. الربط الحي يحتاج المفتاح واختبار سؤال فعلي؛ إعداد اسم المزوّد وحده لا يفعّله.
+![Baseera's journey from scattered data to a clear decision](public/baseera-story.png)
 
-مساحة عربية لتحويل ملف Excel أو CSV إلى بيانات قابلة للمراجعة، تحليل محسوب، ولوحة وتقرير واضحين.
+## Why Baseera?
 
-[الموقع](https://baseera-analytics.osaidziad84.chatgpt.site)
+A chart is easy to make. Knowing whether the file is sound, what changed during cleaning, and which rows support the conclusion takes more care. Baseera guides that process from the first upload to the final report.
 
-## ما يعمل في هذه النسخة
+## The journey
 
-| الصفحة | ما تنجزه |
-|---|---|
-| ابدأ بملف | استيراد Excel بكل أوراقه، CSV/TSV، أو نسخة مشروع؛ مثال مبيعات اصطناعي من ورقتين |
-| مساحة البيانات | جميع الصفوف عبر صفحات، جميع الأعمدة، بحث شامل، تصفية، ترتيب، إخفاء وتثبيت أعمدة، تحرير خلايا، إضافة وحذف صفوف، تسمية الأعمدة وتعريف أنواعها، أصل للقراءة، تراجع وإعادة |
-| جودة البيانات | تفاصيل الفراغ والتكرار والمسافات ومخالفة الأنواع والقيم السالبة والمتطرفة؛ ملخص عددي لكل عمود |
-| التنظيف | معاينة قبل/بعد، تطبيق صريح، تحويل الأرقام والتواريخ، تعبئة بقيمة أو وسيط، استبدال فئات، إزالة التكرار، وسجل تغييرات |
-| مختبر التحليل | تجميع ومقارنة، اتجاه يومي/شهري/سنوي، توزيع، Pearson، فلاتر AND، جدول نتائج كامل وتصدير |
-| لوحة المؤشرات | حتى 24 بطاقة من أوراق مختلفة، اختيار الرسم، إعادة ترتيب، إعادة حساب بعد التعديل، فتح التفاصيل، طباعة |
-| التحقق والتقرير | ستة فحوص فعلية، مراجعة بشرية مرتبطة بإصدار البيانات، تقرير موثّق بالمصدر والفلاتر، ملاحظة قرار محفوظة، طباعة وتصدير نصي |
-| مشاريعي | حفظ سحابي خاص بالمستخدم، فتح وحذف ونسخ المشاريع، تصدير نسخة قابلة للاستعادة |
+1. **Upload** an Excel workbook with multiple sheets, or a CSV/TSV file. A sample dataset is available to explore.
+2. **Inspect** every row and column. Search, filter, sort, edit cells, and compare your working data with the original.
+3. **Clean** with a preview of the effect before applying changes. Undo and redo edits as you work.
+4. **Analyze** groups, trends, distributions, and correlations with calculations made from the data.
+5. **Visualize** results in a dashboard with multiple cards and charts.
+6. **Verify** the inputs and limits of a result, then write a report and save the project for later.
 
-التحليل اليدوي يعمل دون API. مساعد AI يحتاج إعدادًا على الخادم؛ لا توجد إجابات وهمية أو تأخير مصطنع يوحي باستدعاء موديل.
+Negative values stay visible for review: in a sales file, for example, they might be legitimate returns.
 
-## طريقة تجربة سريعة
+## What works today
 
-1. افتح «ابدأ بملف» ثم «افتح بيانات التجربة».
-2. ابحث عن `ORD-0144`؛ البحث يشمل جميع الصفوف وليس الصفحة الظاهرة فقط.
-3. عدّل خلية ثم تراجع، وبدّل إلى «الملف الأصلي» للمقارنة.
-4. من التنظيف عاين قص المسافات في `region`، ثم طبّق. عاين التكرار وراجعه قبل الحذف.
-5. قارن مجموع `sales_total` حسب `region`، ثم أضف النتيجة إلى اللوحة.
-6. أنشئ اتجاهًا شهريًا باستخدام `date` وأضفه كبطاقة ثانية.
-7. راجع الفحوص، واكتب خطوتك التالية في التقرير.
-8. احفظ في حسابك أو نزّل ملف `.baseera.json` يحفظ الأصل والنسخة المعدلة والبطاقات والخطة والملاحظة.
+| Area | Capability |
+| --- | --- |
+| Data workspace | Multiple sheets, full table browsing, editing, search, filters, sorting, and original/working comparison |
+| Data quality | Missing values, duplicates, inconsistent types and spacing, negative values, and outliers |
+| Cleaning | Previewed transformations, explicit application, change history, undo and redo |
+| Analysis | Grouped summaries, time trends, distributions, correlation, filters, and contributing rows |
+| Dashboard & report | Multiple visualizations, verification checks, a decision note, and export/print options |
+| Projects | Local draft, account-based cloud storage, and a portable project file |
 
-## قواعد الحساب
+The **AI Analysis Lab** can turn a question into a reviewable analysis plan using Gemini or Groq. Baseera's calculation engine produces the numbers; the model does not calculate them. Live AI requires a server-side API key and a configured model; manual analysis works without either.
 
-- الفراغ والقيمة غير القابلة للتحويل **لا يصبحان صفرًا**. يُعرض عدد الصفوف غير المساهمة.
-- `count` يعدّ كل الصفوف المطابقة للفلاتر؛ `sum/average/min/max` تستخدم القيم الرقمية الصالحة فقط.
-- المتوسط الكلي محسوب من القيم المساهمة، وليس متوسط متوسطات المجموعات.
-- القيم السالبة والمتطرفة للمراجعة؛ لا تُحذف تلقائيًا. التطرف يستخدم حدود `1.5 × IQR` عند توفر أربع قيم على الأقل.
-- التاريخ القياسي `YYYY-MM-DD`. تحويل يوم/شهر أو شهر/يوم يختاره المستخدم صراحة. لا تُخمن التواريخ الملتبسة.
-- الاتجاه يستبعد التاريخ غير الصالح؛ الفترات غير الموجودة لا تُمثَّل بأصفار مصطنعة.
-- Pearson يستخدم الأزواج الرقمية المكتملة؛ لا يُحسب عند ثبات أحد المتغيرين أو توفر أقل من زوجين.
-- الرسم يعرض حتى 24 مجموعة أو 2000 نقطة. الحساب والجدول والتصدير تشمل كل النتائج، مع إظهار حد العرض.
-- الدائري متاح لمجموع أو عدد غير سالب، حتى 12 فئة، وإجمالي موجب.
-- الأرقام من JavaScript double precision؛ التطبيق ليس محرك محاسبة بدقة عشرية ثابتة. المبالغ تُعرض مقربة دون تغيير القيم الأصلية. تجاوز المجال الرقمي ينتج خطأً واضحًا.
+## Try it
 
-## الملفات والحفظ
+Open the [live site](https://baseera-analytics.osaidziad84.chatgpt.site), choose **«جرّب بملف جاهز»**, edit a cell, preview a cleaning step, and compare `sales_total` by `region`. Add that result to the dashboard, then check the rows behind it.
 
-- الملف: حتى 20 MB، 250 ألف خلية إجمالًا، 40 ورقة، 150 عمودًا، و100 ألف صف في الورقة.
-- أول صف للعناوين. الأعمدة بلا أسماء تُسمّى تلقائيًا والعناوين المكررة تُميّز. الصفوف الفارغة بالكامل تُستبعد عند الاستيراد.
-- الاستيراد يقرأ القيم المخزنة في Excel؛ لا يشغّل Macro أو يعيد حساب الصيغ. المشروع لا يحافظ على تنسيق Excel أو الرسوم أو الصيغ الأصلية.
-- CSV يحافظ على النصوص والأصفار الافتتاحية. الاستدلال على النوع اقتراح قابل للتعديل؛ «معرّف» مناسب للأكواد والهواتف.
-- CSV يحمي النصوص التي تبدأ بعلامات الصيغ بإضافة apostrophe؛ تصدير Excel يحافظ على نوع النص دون تحويله إلى صيغة.
-- النسخة الأصلية لا تتغير. سجل المشروع يحتفظ بآخر 500 عملية. التراجع في الجلسة يحتفظ بآخر 2–20 تعديلًا حسب حجم الملف؛ لا يُستعاد stack التراجع بعد إعادة تحميل الصفحة.
-- IndexedDB يحفظ **مسودة الجهاز** فقط. قد تفقد المسودة عند مسح بيانات المتصفح أو استخدام جهاز آخر.
-- الحفظ الدائم: D1 لبيانات الملكية والإصدار، وR2 لملف المشروع. الحد 100 مشروع للمستخدم و12 MB للمشروع. أي حفظ متعارض يُرفض بدل الكتابة فوق النسخة الأحدث.
-- افتح النسخة المحفوظة من «مشاريعي» قبل متابعة مشروع سبق حفظه من جهاز آخر. عند التعارض صدّر تعديلاتك، ثم افتح أحدث نسخة أو تابع في نسخة جديدة.
-- الحفظ السحابي يرسل المشروع كاملًا، بما فيه الأصل. استخدام AI يرسل فقط السؤال وأسماء الأعمدة وأنواعها والإحصاءات المعروضة، بعد تأكيد المستخدم داخل الصفحة.
+## Run locally
 
-## إعداد مساعد AI
-
-استخدم إعدادات بيئة الموقع على الخادم. لا تضع المفتاح في الواجهة أو المستودع أو أي متغير يبدأ بـ `NEXT_PUBLIC_`.
-
-| المتغير | القيمة |
-|---|---|
-| `AI_PROVIDER` | `gemini` أو `groq` |
-| `AI_MODEL` | الاسم الدقيق لموديل متاح في حساب المزوّد ومتوافق مع JSON output |
-| `GEMINI_API_KEY` | سرّ الخادم عند اختيار Gemini |
-| `GROQ_API_KEY` | سرّ الخادم عند اختيار Groq |
-
-لا يوجد اسم موديل مفترض. بعد ضبط القيم أعد نشر النسخة لتفعيلها.
-
-- `GET /api/ai/status` يعرض هل الإعداد مكتمل، واسم المزوّد والموديل، وحالة تسجيل الدخول؛ لا يعرض المفتاح.
-- `POST /api/ai/plan` يتطلب هوية المستخدم، وطلبًا من المصدر نفسه، ووصفًا محدود الحجم. حد التجربة 20 طلبًا لكل مستخدم في الساعة، ويشمل المحاولات الفاشلة بعد استهلاك الحد.
-- Gemini يستخدم `generateContent` و`responseJsonSchema`. Groq يستخدم JSON Object Mode مع تحقق Zod مستقل. المرجع: [Gemini](https://ai.google.dev/api/generate-content)، [Groq](https://console.groq.com/docs/structured-outputs).
-- المخرجات خطة محددة أو سؤال توضيح. نرفض الأعمدة غير الموجودة والعمليات غير المدعومة والردود المبتورة. لا يُنفّذ SQL أو JavaScript أو Python مولّد.
-- المستخدم ينقل الخطة إلى الإعدادات، يراجعها، ثم ينفذها. إذا تغيّرت البيانات بعد الطلب تُرفض الخطة القديمة في الواجهة.
-- مهلة 30 ثانية، أخطاء مفهومة، ولا نسجل المفاتيح أو الأسئلة أو بيانات الملفات في سجلات الخادم.
-- لا توجد joins أو توقعات أو صيغ مشتقة أو فهم مفتوح لكل سؤال في هذه النسخة. الأسئلة خارج العمليات الأربع تحتاج توضيحًا.
-
-**حالة الربط:** المحوّلان مكتوبان ومختبران باستجابات معزولة؛ التجربة الحية والجودة الفعلية بالعربية تنتظر مفتاح المستخدم واختيار الموديل. ظهور «الإعداد مكتمل» لا يثبت نجاح استدعاء فعلي أو كفاية الرصيد.
-
-## التشغيل والصيانة
-
-React 19، TypeScript، Vinext/Next، Tailwind، Recharts، SheetJS، Cloudflare Workers، D1، R2. حافظ على `pnpm-lock.yaml`.
+Requires Node.js `>=22.13.0` and pnpm.
 
 ```bash
+git clone https://github.com/OsaidZiad04/baseera-analytics.git
+cd baseera-analytics
 pnpm install
 pnpm dev
+```
+
+For checks and a production build:
+
+```bash
 pnpm test
 pnpm exec tsc --noEmit
 pnpm build
 ```
 
-تحدد `.openai/hosting.json` ارتباط الموقع و`DB` و`BUCKET`. تعريف الجداول في `db/schema.ts`، وترحيلات Drizzle في `drizzle/`. بعد أي تغيير مخطط شغّل `pnpm db:generate` وراجع SQL قبل النشر. لا تعدّل ترحيلًا طُبق سابقًا.
+To configure AI locally, copy `.env.example` to `.env`, set `AI_PROVIDER`, `AI_MODEL`, and the corresponding `GROQ_API_KEY` or `GEMINI_API_KEY`. Keep API keys on the server and out of Git. For deployed use, set them as hosting secrets. See the [technical guide](docs/TECHNICAL.md) for data rules, limits, storage, and API behavior.
 
-واجهات المشاريع وAI تعتمد هوية ChatGPT التي يحقنها مضيف Sites. غيابها في المعاينة المحلية يعرض طلب تسجيل الدخول؛ لا تستخدم هوية مصطنعة لتجاوز هذا الفحص.
+## Built with
 
-## التحقق من هذه الجولة
+React 19 · TypeScript · Vinext / Next.js · Tailwind CSS · Recharts · SheetJS · Cloudflare Workers · D1 · R2
 
-- 13 اختبارًا: قراءة CSV مع اقتباس وأسطر متعددة، الأرقام العربية، استيراد الأوراق، المعرّفات، تصدير Excel/CSV واستعادته، الحسابات والفراغ والسالب، الاتجاه والتوزيع والارتباط، معاينة التنظيف، أصل الملف، التحقق من المشاريع، وحدود طلبات AI وردوده.
-- فحص SQL في SQLite: الاستعلامات الثمانية، تحديد ملكية المشروع، رفض الحفظ بإصدار قديم، وحد الطلبات وتجدده.
-- اختبار واجهة على المثال الداخلي وعلى Excel مستقل من ورقتين و60 صفًا: التنقل العادي، كل الصفوف، البحث، التعديل والتراجع، التنظيف، حساب المقارنة والاتجاه، بطاقات اللوحة، فحوص المراجعة، التقرير، واستعادة المسودة.
-- جلسة الاختبار المحلية لا توفر هوية الاستضافة؛ حفظ/فتح R2 بحساب المستخدم يحتاج تأكيدًا بعد تسجيل الدخول في الموقع. واجهات الحماية تعرض الحالة بوضوح.
-- إنشاء ملفات التصدير واختبار محتواها نجح برمجيًا. متصفح المعاينة لم يُرجع حدث تنزيل لروابط Blob، لذا يلزم تأكيد تنزيلها النهائي من متصفح المستخدم. لا تعتمد نجاح التسلسل على نسخة لم تتأكد من نزولها.
+## Author
 
-## ما بعد تجهيز البيانات والمفتاح
+**Osaid Alhawamdeh** — AI Engineer & Trainer
 
-اختبر 10–20 سؤالًا حقيقيًا على ملفات منزوعة البيانات الشخصية، مع إجابة مرجعية محسوبة مسبقًا. قارن الخطة والفلاتر والأرقام، جرّب الأسئلة الملتبسة، ثم اختر الموديل بحسب جودة الإجابات والتكلفة والزمن. احتفظ بالتحليل اليدوي كمسار بديل دائم.
+[Portfolio](https://osaidziad04.github.io/) · [LinkedIn](https://www.linkedin.com/in/osaid-z-alhawamdeh/) · [GitHub](https://github.com/OsaidZiad04)
