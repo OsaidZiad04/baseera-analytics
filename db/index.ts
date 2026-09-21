@@ -2,6 +2,15 @@ import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import * as schema from "./schema";
 
+export function getStorage() {
+  if (!env.DB || !env.BUCKET) throw new Error('STORAGE_UNAVAILABLE');
+  return { db: env.DB, bucket: env.BUCKET };
+}
+export function getRawDb() {
+  if (!env.DB) throw new Error('STORAGE_UNAVAILABLE');
+  return env.DB;
+}
+
 export function getDb() {
   if (!env.DB) {
     throw new Error(

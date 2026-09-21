@@ -1,30 +1,118 @@
 "use client";
-import {createContext,useCallback,useContext,useEffect,useMemo,useState} from "react";
-import {demoRows,numberValue,parseCsv,Policies,Row,stableRow,valueLabel} from "./data";
-
-type Analysis={sum:number;count:number;average:number;chart:{name:string;value:number;rows:number}[]};
-type LabValue={hydrated:boolean;fileName:string;rawRows:Row[];columns:string[];numericColumns:string[];categoryColumns:string[];quality:{missing:number;duplicates:number;negatives:number;textNeedsTrim:number};policies:Policies;setPolicy:(key:keyof Policies,value:boolean)=>void;cleanedRows:Row[];metric:string;setMetric:(v:string)=>void;dimension:string;setDimension:(v:string)=>void;analysis:Analysis;score:number;verified:boolean;setVerified:(v:boolean)=>void;loadDemo:()=>void;loadFile:(file:File)=>Promise<void>;reset:()=>void};
-const LabContext=createContext<LabValue|null>(null);
-const defaults:Policies={removeDuplicates:true,quarantineNegative:true,trimText:true,convertNumbers:true};
-
-export function LabProvider({children}:{children:React.ReactNode}){
- const[hydrated,setHydrated]=useState(false),[fileName,setFileName]=useState(""),[rawRows,setRawRows]=useState<Row[]>([]),[policies,setPolicies]=useState(defaults),[metric,setMetric]=useState(""),[dimension,setDimension]=useState(""),[verified,setVerified]=useState(false);
- useEffect(()=>{try{const saved=sessionStorage.getItem("baseera-session");if(saved){const x=JSON.parse(saved);setFileName(x.fileName??"");setRawRows(x.rawRows??[]);setPolicies(x.policies??defaults);setMetric(x.metric??"");setDimension(x.dimension??"");setVerified(!!x.verified)}}finally{setHydrated(true)}},[]);
- useEffect(()=>{if(hydrated)sessionStorage.setItem("baseera-session",JSON.stringify({fileName,rawRows,policies,metric,dimension,verified}))},[hydrated,fileName,rawRows,policies,metric,dimension,verified]);
- const columns=useMemo(()=>rawRows.length?Object.keys(rawRows[0]):[],[rawRows]);
- const numericColumns=useMemo(()=>columns.filter(c=>{const vals=rawRows.map(r=>r[c]).filter(v=>v!==null&&v!=="");return vals.length>0&&vals.filter(v=>numberValue(v)!==null).length/vals.length>=.6}),[columns,rawRows]);
- const categoryColumns=useMemo(()=>columns.filter(c=>!numericColumns.includes(c)),[columns,numericColumns]);
- useEffect(()=>{if(numericColumns.length&&!numericColumns.includes(metric))setMetric(numericColumns.at(-1)??"");if(categoryColumns.length&&!categoryColumns.includes(dimension))setDimension(categoryColumns.find(c=>/region|منطقة|product|منتج/i.test(c))??categoryColumns[0])},[numericColumns,categoryColumns,metric,dimension]);
- const quality=useMemo(()=>{const missing=rawRows.reduce((s,r)=>s+columns.filter(c=>r[c]===null||r[c]==="").length,0);const seen=new Set<string>();let duplicates=0,negatives=0;rawRows.forEach(r=>{const k=stableRow(r,columns);if(seen.has(k))duplicates++;else seen.add(k);negatives+=columns.filter(c=>(numberValue(r[c])??0)<0).length});const textNeedsTrim=rawRows.reduce((s,r)=>s+columns.filter(c=>typeof r[c]==="string"&&r[c]!==String(r[c]).trim()).length,0);return{missing,duplicates,negatives,textNeedsTrim}},[rawRows,columns]);
- const cleanedRows=useMemo(()=>{let rows=rawRows.map(r=>Object.fromEntries(columns.map(c=>{let v=r[c];if(policies.trimText&&typeof v==="string")v=v.trim();if(policies.convertNumbers&&numericColumns.includes(c))v=numberValue(v);return[c,v]})) as Row);if(policies.removeDuplicates){const seen=new Set<string>();rows=rows.filter(r=>{const k=stableRow(r,columns);if(seen.has(k))return false;seen.add(k);return true})}if(policies.quarantineNegative)rows=rows.filter(r=>!numericColumns.some(c=>(numberValue(r[c])??0)<0));return rows},[rawRows,columns,policies,numericColumns]);
- const analysis=useMemo(()=>{if(!metric)return{sum:0,count:0,average:0,chart:[]};const vals=cleanedRows.map(r=>numberValue(r[metric])).filter((v):v is number=>v!==null),sum=vals.reduce((a,b)=>a+b,0),grouped=new Map<string,{value:number;rows:number}>();cleanedRows.forEach(r=>{const name=valueLabel(r[dimension]),cur=grouped.get(name)??{value:0,rows:0};grouped.set(name,{value:cur.value+(numberValue(r[metric])??0),rows:cur.rows+1})});return{sum,count:vals.length,average:vals.length?sum/vals.length:0,chart:[...grouped.entries()].map(([name,v])=>({name,...v})).sort((a,b)=>b.value-a.value).slice(0,10)}},[cleanedRows,metric,dimension]);
- const score=useMemo(()=>{let v=100;if(quality.missing)v-=Math.min(20,quality.missing*2);if(!policies.removeDuplicates&&quality.duplicates)v-=20;if(!policies.quarantineNegative&&quality.negatives)v-=25;if(!policies.trimText&&quality.textNeedsTrim)v-=10;return Math.max(35,v)},[quality,policies]);
- const load=(rows:Row[],name:string)=>{const clean=rows.filter(r=>Object.values(r).some(v=>v!==null&&v!==""));if(!clean.length)throw new Error("لم أجد صفوف بيانات داخل الملف");setRawRows(clean);setFileName(name);setPolicies(defaults);setVerified(false);sessionStorage.setItem("baseera-session",JSON.stringify({fileName:name,rawRows:clean,policies:defaults,metric:"",dimension:"",verified:false}))};
- const loadDemo=useCallback(()=>load(demoRows,"Demo_Sales.csv"),[]);
- const loadFile=async(file:File)=>{const ext=file.name.split(".").pop()?.toLowerCase();if(ext==="csv")load(parseCsv(await file.text()),file.name);else if(ext==="xlsx"||ext==="xls"){const XLSX=await import("xlsx");const wb=XLSX.read(await file.arrayBuffer(),{cellDates:true}),sheet=wb.Sheets[wb.SheetNames[0]];load(XLSX.utils.sheet_to_json<Row>(sheet,{defval:null,raw:true}),file.name)}else throw new Error("ارفع ملف CSV أو Excel بصيغة XLSX أو XLS")};
- const reset=()=>{setFileName("");setRawRows([]);setPolicies(defaults);setMetric("");setDimension("");setVerified(false);sessionStorage.removeItem("baseera-session")};
- const setPolicy=(key:keyof Policies,value:boolean)=>{setPolicies(p=>({...p,[key]:value}));setVerified(false)};
- useEffect(()=>{const context=typeof document==="undefined"?undefined:(document as Document&{modelContext?:{registerTool?:(tool:unknown,options?:{signal?:AbortSignal})=>void|Promise<void>}}).modelContext;if(!context?.registerTool)return;const lifecycle=new AbortController(),register=(tool:unknown)=>{try{void Promise.resolve(context.registerTool?.(tool,{signal:lifecycle.signal})).catch(()=>undefined)}catch{}};register({name:"load_baseera_demo",title:"بدء تجربة بصيرة",description:"يحمّل ملف المبيعات التعليمي ويبدأ رحلة التحليل المرئية.",inputSchema:{type:"object",properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute:async()=>{loadDemo();return{file:"Demo_Sales.csv",rows:demoRows.length}}});register({name:"configure_cleaning_policy",title:"ضبط سياسة التنظيف",description:"يحدّث قرارات التكرار والقيم السالبة والمسافات في جلسة بصيرة الحالية.",inputSchema:{type:"object",properties:{removeDuplicates:{type:"boolean"},quarantineNegative:{type:"boolean"},trimText:{type:"boolean"}},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute:async(input:unknown)=>{const x=input as Partial<Policies>;setPolicies(p=>({...p,...x}));setVerified(false);return{updated:true}}});register({name:"read_baseera_summary",title:"قراءة ملخص بصيرة",description:"يعيد حالة التحليل والمؤشرات ودرجة الجاهزية من الجلسة الحالية.",inputSchema:{type:"object",properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:false},execute:async()=>({file:fileName,rawRows:rawRows.length,acceptedRows:cleanedRows.length,metric,dimension,sum:analysis.sum,average:analysis.average,qualityScore:score,verified})});return()=>lifecycle.abort()},[loadDemo,fileName,rawRows.length,cleanedRows.length,metric,dimension,analysis.sum,analysis.average,score,verified]);
- return <LabContext.Provider value={{hydrated,fileName,rawRows,columns,numericColumns,categoryColumns,quality,policies,setPolicy,cleanedRows,metric,setMetric,dimension,setDimension,analysis,score,verified,setVerified,loadDemo,loadFile,reset}}>{children}</LabContext.Provider>
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Card, demoProject, makeSheet, newProject, Project, Sheet, validateProject } from '@/lib/baseera/model';
+import { uuid } from '@/lib/baseera/model';
+import { importWorkbook } from '@/lib/baseera/io';
+import { analyze, inspectSheet } from '@/lib/baseera/engine';
+import { registerNavigationSave } from '@/lib/baseera/navigation';
+type Draft = { project: Project; cloudVersion: number | null; undo?: Project[]; redo?: Project[] };
+let draftQueue: Promise<unknown> = Promise.resolve();
+function draft(value?: Project | null, cloudVersion: number | null = null, undo: Project[] = [], redo: Project[] = []): Promise<Draft | null> {
+  const task = draftQueue.catch(() => {}).then(() => accessDraft(value, cloudVersion, undo, redo));
+  draftQueue = task;
+  return task;
 }
-export function useLab(){const x=useContext(LabContext);if(!x)throw new Error("useLab must be used inside LabProvider");return x}
+function accessDraft(value?: Project | null, cloudVersion: number | null = null, undo: Project[] = [], redo: Project[] = []): Promise<Draft | null> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('baseera-drafts', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('draft');
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result, tx = db.transaction('draft', value === undefined ? 'readonly' : 'readwrite'), store = tx.objectStore('draft');
+      const operation = value === undefined ? store.get('current') : value === null ? store.delete('current') : store.put({ project: value, cloudVersion, undo, redo }, 'current');
+      let saved: Draft | null = null;
+      operation.onsuccess = () => { if (value === undefined) saved = operation.result?.version === 2 ? { project: operation.result, cloudVersion: null } : operation.result ?? null; };
+      tx.oncomplete = () => { db.close(); resolve(saved); }; tx.onabort = tx.onerror = () => { db.close(); reject(tx.error); };
+    };
+  });
+}
+type Context = {
+  hydrated: boolean; project: Project | null; sheet: Sheet | null;
+  profile: ReturnType<typeof inspectSheet> | null; result: ReturnType<typeof analyze> | null; analysisError: string;
+  notice: string; setNotice: (s: string) => void; draftState: string;
+  loadDemo: () => void; loadFile: (file: File) => Promise<void>; openProject: (p: Project, cloudVersion?: number) => void;
+  updateSheet: (sheet: Sheet, description: string, affected: number) => void;
+  updateProject: (fn: (p: Project) => Project) => void;
+  switchSheet: (id: string) => void; undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean;
+  addCard: (card: Omit<Card, 'id' | 'createdRevision'>) => void;
+  reset: () => void; saveCloud: () => Promise<void>; saving: boolean; cloudState: string;
+};
+const LabContext = createContext<Context | null>(null);
+export function LabProvider({ children }: { children: React.ReactNode }) {
+  const [project, setProject] = useState<Project | null>(null), current = useRef<Project | null>(null);
+  const [hydrated, setHydrated] = useState(false), [notice, setNotice] = useState(''), [draftState, setDraftState] = useState('');
+  const [undoStack, renderUndo] = useState<Project[]>([]), [redoStack, renderRedo] = useState<Project[]>([]);
+  const undoRef = useRef<Project[]>([]), redoRef = useRef<Project[]>([]);
+  const setUndoStack = (value: Project[] | ((s: Project[]) => Project[])) => { undoRef.current = typeof value === 'function' ? value(undoRef.current) : value; renderUndo(undoRef.current); };
+  const setRedoStack = (value: Project[] | ((s: Project[]) => Project[])) => { redoRef.current = typeof value === 'function' ? value(redoRef.current) : value; renderRedo(redoRef.current); };
+  const [saving, setSaving] = useState(false), [cloudState, setCloudState] = useState('لم يُحفظ سحابيًا');
+  const cloudVersion = useRef<number | null>(null);
+  const commit = useCallback((p: Project | null) => { current.current = p; setProject(p); }, []);
+  useEffect(() => {
+    let mounted = true;
+    draft().then(saved => {
+      if (!mounted) return;
+      if (saved) { commit(validateProject(saved.project));
+        try { setUndoStack((saved.undo ?? []).slice(-20).map(validateProject)); setRedoStack((saved.redo ?? []).slice(-20).map(validateProject)); } catch { setUndoStack([]); setRedoStack([]); }
+        cloudVersion.current = saved.cloudVersion; setCloudState(saved.cloudVersion ? 'نسخة مرتبطة بمشروع محفوظ؛ احفظ أحدث التعديلات' : 'لم يُحفظ سحابيًا'); }
+      else {
+        const legacy = sessionStorage.getItem('baseera-session');
+        if (legacy) { const old = JSON.parse(legacy); if (old.rawRows?.length) { const keys = Object.keys(old.rawRows[0]); commit(newProject(old.fileName || 'ملف سابق', [makeSheet('البيانات', [keys, ...old.rawRows.map((r: Record<string, unknown>) => keys.map(k => r[k] ?? null))], 0)])); setNotice('استعدنا بيانات جلستك السابقة. راجع أنواع الأعمدة قبل التحليل.'); } }
+      }
+    }).catch(() => { if (mounted) setNotice('تعذر استعادة المسودة المحلية. يمكنك رفع نسخة مشروع محفوظة.'); }).finally(() => { if (mounted) setHydrated(true); });
+    return () => { mounted = false; };
+  }, [commit]);
+  useEffect(() => {
+    if (!hydrated) return;
+    let active = true; setDraftState('جارٍ حفظ المسودة…');
+    draft(project, cloudVersion.current, undoRef.current, redoRef.current).then(() => { if (active) setDraftState(project ? 'مسودة على هذا الجهاز' : ''); }).catch(() => { if (active) setDraftState('تعذر حفظ المسودة — صدّر نسخة مشروع'); });
+    return () => { active = false; };
+  }, [project, hydrated]);
+  useLayoutEffect(() => registerNavigationSave(async () => {
+    try {
+      if (!hydrated) throw new Error('انتظر لحظة حتى تكتمل استعادة مشروعك ثم حاول مجددًا.');
+      setDraftState('جارٍ حفظ التقدم قبل الانتقال…');
+      await draft(current.current, cloudVersion.current, undoRef.current, redoRef.current);
+    } catch (error) {
+      setNotice(!hydrated ? 'انتظر لحظة حتى تكتمل استعادة مشروعك ثم حاول مجددًا.' : 'تعذر حفظ التقدم؛ بقيت في الصفحة لحماية تعديلاتك. صدّر نسخة مشروع ثم حاول مجددًا.');
+      throw error;
+    }
+  }), [hydrated]);
+  const openProject = useCallback((p: Project, version?: number) => {
+    commit(validateProject(p)); setUndoStack([]); setRedoStack([]); cloudVersion.current = version ?? null;
+    setCloudState(version ? 'تم فتح المشروع المحفوظ' : 'لم يُحفظ سحابيًا'); setNotice('');
+  }, [commit]);
+  const updateProject = (fn: (p: Project) => Project) => { const p = current.current; if (!p) return; commit(validateProject({ ...fn(p), updatedAt: new Date().toISOString() })); setCloudState('تغييرات غير محفوظة سحابيًا'); };
+  const updateSheet = (sheet: Sheet, description: string, affected: number) => {
+    const p = current.current; if (!p) return;
+    const next = validateProject({ ...p, revision: p.revision + 1, verifiedRevision: null, updatedAt: new Date().toISOString(), sheets: p.sheets.map(s => s.id === sheet.id ? sheet : s), history: [...p.history, { id: uuid(), at: new Date().toISOString(), sheetId: sheet.id, label: description, affected }].slice(-500) });
+    const cells = p.sheets.reduce((n, s) => n + s.rows.length * s.columns.length, 0), limit = Math.max(2, Math.min(20, Math.floor(500000 / Math.max(1, cells))));
+    setUndoStack(stack => [...stack, p].slice(-limit)); setRedoStack([]); commit(next); setCloudState('تغييرات غير محفوظة سحابيًا');
+  };
+  const travel = (direction: 'undo' | 'redo') => {
+    const source = direction === 'undo' ? undoStack : redoStack, p = current.current, previous = source.at(-1); if (!p || !previous) return;
+    const next = { ...p, sheets: previous.sheets, activeSheetId: previous.activeSheetId, activePlan: p.activeSheetId === previous.activeSheetId ? p.activePlan : null, revision: p.revision + 1, verifiedRevision: null, updatedAt: new Date().toISOString(), history: [...p.history, { id: uuid(), at: new Date().toISOString(), sheetId: previous.activeSheetId, label: direction === 'undo' ? 'تراجع عن آخر تعديل' : 'إعادة التعديل', affected: 0 }].slice(-500) };
+    if (direction === 'undo') { setUndoStack(source.slice(0, -1)); setRedoStack(stack => [...stack, p]); } else { setRedoStack(source.slice(0, -1)); setUndoStack(stack => [...stack, p]); }
+    commit(next); setCloudState('تغييرات غير محفوظة سحابيًا');
+  };
+  const sheet = project?.sheets.find(s => s.id === project.activeSheetId) ?? null;
+  const profile = useMemo(() => sheet ? inspectSheet(sheet) : null, [sheet]);
+  const computation = useMemo(() => { if (!sheet || !project?.activePlan) return { result: null, error: '' }; try { return { result: analyze(sheet, project.activePlan), error: '' }; } catch (e) { return { result: null, error: e instanceof Error ? e.message : 'تعذر حساب النتيجة.' }; } }, [sheet, project?.activePlan]);
+  const saveCloud = async () => {
+    const p = current.current; if (!p || saving) return;
+    setSaving(true); setCloudState('جارٍ الحفظ…');
+    try {
+      const response = await fetch('/api/projects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: p, expectedVersion: cloudVersion.current }) });
+      const data = await response.json() as { error?: string; version: number }; if (!response.ok) throw new Error(data.error || 'تعذر حفظ المشروع.');
+      if (current.current?.id === p.id) { cloudVersion.current = data.version; void draft(current.current, data.version, undoRef.current, redoRef.current).catch(() => setDraftState('تعذر تحديث المسودة المحلية؛ صدّر نسخة احتياطية')); setCloudState(current.current === p ? 'محفوظ سحابيًا' : 'حُفظت نسخة؛ لديك تعديلات أحدث'); }
+    } catch (e) { setCloudState(e instanceof Error ? e.message : 'فشل الحفظ؛ بياناتك ما زالت في المسودة.'); } finally { setSaving(false); }
+  };
+  return <LabContext.Provider value={{ hydrated, project, sheet, profile, result: computation.result, analysisError: computation.error, notice, setNotice, draftState, cloudState, saving, saveCloud,
+    loadDemo: () => openProject(demoProject()), loadFile: async file => openProject(await importWorkbook(file)), openProject, updateSheet, updateProject,
+    switchSheet: id => updateProject(p => ({ ...p, activeSheetId: id, activePlan: null, verifiedRevision: null })),
+    undo: () => travel('undo'), redo: () => travel('redo'), canUndo: !!undoStack.length, canRedo: !!redoStack.length,
+    addCard: card => updateProject(p => ({ ...p, cards: [...p.cards, { ...card, id: uuid(), createdRevision: p.revision }] })),
+    reset: () => { commit(null); cloudVersion.current = null; setUndoStack([]); setRedoStack([]); sessionStorage.removeItem('baseera-session'); setCloudState('لم يُحفظ سحابيًا'); },
+  }}>{children}</LabContext.Provider>;
+}
+export function useLab() { const context = useContext(LabContext); if (!context) throw new Error('LabProvider required'); return context; }
